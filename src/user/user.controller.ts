@@ -9,11 +9,15 @@ import {
   ValidationPipe,
   Query,
   ConflictException,
+  NotFoundException,
+  Param,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import * as bcrypt from 'bcryptjs';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { CreateUserDto } from 'src/dto/create-user.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorator/roles.decorator';
 
 @Controller('users')
 export class UserController {
@@ -95,5 +99,29 @@ export class UserController {
       return rest;
     }
     return null;
+  }
+
+  // Add this endpoint to get all patients for admin
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('patients')
+  async getAllPatients() {
+    const patients = await this.userService.findAllPatients();
+    // Remove password from response
+    return patients.map(({ password, ...patient }) => patient);
+  }
+
+  //this endpoint gets patient by ID for admin
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('patients/:id')
+  async getPatientById(@Param('id') id: string) {
+    const patient = await this.userService.findById(id);
+    if (!patient || patient.role !== 'patient') {
+      throw new NotFoundException('Patient not found');
+    }
+    // Remove password from response
+    const { password, ...patientData } = patient;
+    return patientData;
   }
 }

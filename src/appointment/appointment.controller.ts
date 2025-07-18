@@ -13,11 +13,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AppointmentService } from './appointment.service';
-import { CreateAppointmentDto } from 'src/dto/create-appointment.dto';
-import { RescheduleAppointmentDto, UpdateAppointmentDto } from 'src/dto/update-appointment.dto';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorator/roles.decorator';
+import { CreateAppointmentDto } from '../dto/create-appointment.dto';
+import { RescheduleAppointmentDto, UpdateAppointmentDto } from '../dto/update-appointment.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorator/roles.decorator';
 
 @Controller('appointment')
 export class AppointmentController {

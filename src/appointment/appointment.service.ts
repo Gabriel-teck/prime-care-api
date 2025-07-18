@@ -2,15 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Appointment } from './appointment.entity';
-import { NotificationService } from 'src/notification/notification.service';
-import { NotificationGateway } from 'src/notification/notification.gateway';
+// import { NotificationService } from '../notification/notification.service';
+import { NotificationGateway } from '../notification/notification.gateway';
 
 @Injectable()
 export class AppointmentService {
   constructor(
     @InjectRepository(Appointment)
     private repo: Repository<Appointment>,
-    private notificationService: NotificationService,
+    // private notificationService: NotificationService,
     private notificationGateway: NotificationGateway,
   ) {}
 
@@ -37,34 +37,25 @@ export class AppointmentService {
     Object.assign(appt, data);
     const updated = await this.repo.save(appt);
 
-    //send Notification on status change
+    // Send in-app notifications on status change
     if (data.status === 'confirmed') {
-      //Email
-      await this.notificationService.sendAppointmentUpdate(
-        appt.email,
-        'Your appointmet is confirmed',
-        `<p>Your appointment on <b>${appt.date}</b> at <b>${appt.time}</b> has been <b>confirmed</b>.</p>`,
-      );
-
-      //In-app
+      // In-app notification only
       this.notificationGateway.notifyUser(appt.patientId, {
         type: 'appointment_confirmed',
         message: `Your appointment on ${appt.date} at ${appt.time} has been confirmed.`,
         appointmentId: appt.id,
       });
     }
+
     if (data.status === 'rescheduled') {
-      await this.notificationService.sendAppointmentUpdate(
-        appt.email,
-        'Your Appointment has been Rescheduled',
-        `<p>Your appointment has been <b>rescheduled</b> to <b>${appt.date}</b> at <b>${appt.time}</b>.</p>`,
-      );
+      // In-app notification only
       this.notificationGateway.notifyUser(appt.patientId, {
         type: 'appointment_rescheduled',
         message: `Your appointment has been rescheduled to ${appt.date} at ${appt.time}.`,
         appointmentId: appt.id,
       });
     }
+
     return updated;
   }
 }

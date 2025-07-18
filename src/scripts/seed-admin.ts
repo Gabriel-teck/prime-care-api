@@ -1,6 +1,7 @@
+// src/create-admin.ts
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from 'src/app.module';
-import { UserService } from 'src/user/user.service';
+import { AppModule } from '../app.module';
+import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcryptjs';
 
 async function bootstrap() {
@@ -13,7 +14,8 @@ async function bootstrap() {
     fullName: 'PrimeCare Admin',
     role: 'admin',
   });
-  console.log('admin created!');
+  console.log('Admin created!');
   await app.close();
 }
+
 bootstrap();

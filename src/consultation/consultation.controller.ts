@@ -19,11 +19,11 @@ import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import { ConsultationService } from './consultation.service';
-import { CreateConsultationDto } from 'src/dto/create-consultation.dto';
-import { UpdateConsultationDto } from 'src/dto/update-consultation.dto';
+import { CreateConsultationDto } from '../dto/create-consultation.dto';
+import { UpdateConsultationDto } from '../dto/update-consultation.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from 'src/common/decorator/roles.decorator';
+import { Roles } from '../common/decorator/roles.decorator';
 
 @Controller('consultations')
 export class ConsultationController {

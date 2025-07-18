@@ -6,10 +6,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { NotificationService } from 'src/notification/notification.service';
-import { UserService } from 'src/user/user.service';
-import { ForgotPasswordDto } from 'src/dto/forgot-password.dto';
-import { ResetPasswordDto } from 'src/dto/reset-password.dto';
+import { NotificationService } from '../notification/notification.service';
+import { UserService } from '../user/user.service';
+import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 

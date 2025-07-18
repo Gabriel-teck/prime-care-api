@@ -26,4 +26,12 @@ export class UserService {
   async create(data: Partial<User>) {
     return this.repo.save(data);
   }
+
+  // Get all patients (for admins only)
+  async findAllPatients() {
+    return this.repo.find({
+      where: { role: 'patient' },
+      order: { fullName: 'ASC' },
+    });
+  }
 }
