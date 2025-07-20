@@ -31,19 +31,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket) {
     try {
       const token = client.handshake.auth.token;
+      console.log('Socket connection attempt - Token exists:', !!token);
+
       if (!token) {
+        console.log('Socket connection failed: No token provided');
         client.disconnect();
         return;
       }
 
+      console.log('Socket connection - Verifying JWT token...');
       const payload = this.jwtService.verify(token);
+      console.log('Socket connection - JWT verified successfully:', {
+        userId: payload.userId,
+        role: payload.role,
+      });
+
       client.data.user = payload;
 
       //join user to their personal room
       client.join(`user_${payload.userId}`);
 
-      console.log(`User ${payload.userId} connected`);
+      console.log(`✅ User ${payload.userId} connected successfully`);
     } catch (error) {
+      console.error(
+        '❌ Socket connection failed - JWT verification error:',
+        error,
+      );
       client.disconnect();
     }
   }

@@ -11,7 +11,7 @@ import { Message } from './message.entity';
   imports: [
     TypeOrmModule.forFeature([Conversation, Message]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: 'supersecret', // Use the same secret as auth module
       signOptions: { expiresIn: '24h' },
     }),
   ],

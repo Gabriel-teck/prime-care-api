@@ -10,6 +10,8 @@ import { NotificationModule } from './notification/notification.module';
 import { ConfigModule } from '@nestjs/config';
 import { Consultation } from './consultation/consultation.entity';
 import { ChatModule } from './chat/chat.module';
+import { Conversation } from './chat/conversation.entity';
+import { Message } from './chat/message.entity';
 
 @Module({
   imports: [
@@ -17,7 +19,7 @@ import { ChatModule } from './chat/chat.module';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'db.sqlite',
-      entities: [User, Appointment, Consultation],
+      entities: [User, Appointment, Consultation, Conversation, Message],
       synchronize: true, // I won't use in production
     }),
     UserModule,
@@ -25,7 +27,7 @@ import { ChatModule } from './chat/chat.module';
     NotificationModule,
     ChatModule,
     AppointmentModule,
-    ConsultationModule
+    ConsultationModule,
   ],
 })
 export class AppModule {}
