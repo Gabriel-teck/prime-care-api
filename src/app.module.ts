@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { ConsultationsModule } from './modules/consultations/consultations.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -26,6 +27,7 @@ import { validateEnv } from './config/env.validation';
     UsersModule,
     AppointmentsModule,
     ConsultationsModule,
+    BookingsModule,
     ChatModule,
     StaffModule,
     PaymentsModule,
