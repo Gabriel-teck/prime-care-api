@@ -1,33 +1,37 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './user/user.entity';
-import { Appointment } from './appointment/appointment.entity';
-import { AppointmentModule } from './appointment/appointment.module';
-import { ConsultationModule } from './consultation/consultation.module';
-import { UserModule } from './user/user.module';
-import { AuthModule } from './auth/auth.module';
-import { NotificationModule } from './notification/notification.module';
 import { ConfigModule } from '@nestjs/config';
-import { Consultation } from './consultation/consultation.entity';
-import { ChatModule } from './chat/chat.module';
-import { Conversation } from './chat/conversation.entity';
-import { Message } from './chat/message.entity';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { ConsultationsModule } from './modules/consultations/consultations.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { StaffModule } from './modules/staff/staff.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
+import { ContentModule } from './modules/content/content.module';
+import { RecordsModule } from './modules/records/records.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { validateEnv } from './config/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'db.sqlite',
-      entities: [User, Appointment, Consultation, Conversation, Message],
-      synchronize: true, // I won't use in production
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnv,
     }),
-    UserModule,
+    PrismaModule,
+    NotificationsModule,
     AuthModule,
-    NotificationModule,
+    UsersModule,
+    AppointmentsModule,
+    ConsultationsModule,
     ChatModule,
-    AppointmentModule,
-    ConsultationModule,
+    StaffModule,
+    PaymentsModule,
+    CatalogModule,
+    ContentModule,
+    RecordsModule,
   ],
 })
 export class AppModule {}
