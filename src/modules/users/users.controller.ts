@@ -61,12 +61,87 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiOperation({ summary: 'List patients (admin)' })
-  async listPatients() {
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Match patient name or email',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'active | new | inactive | all',
+  })
+  async listPatients(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    const q = search?.trim();
     const patients = await this.prisma.user.findMany({
-      where: { role: Role.PATIENT },
+      where: {
+        role: Role.PATIENT,
+        ...(q
+          ? {
+              OR: [
+                { fullName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        _count: {
+          select: {
+            appointmentsAsPatient: true,
+            consultationsAsPatient: true,
+          },
+        },
+        appointmentsAsPatient: {
+          select: { date: true },
+          orderBy: { date: 'desc' },
+          take: 1,
+        },
+        consultationsAsPatient: {
+          select: { date: true },
+          orderBy: { date: 'desc' },
+          take: 1,
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
-    return patients.map(publicUser);
+
+    const thirtyDaysAgo = Date.now() - 1000 * 60 * 60 * 24 * 30;
+    const rows = patients.map((p) => {
+      const visits =
+        p._count.appointmentsAsPatient + p._count.consultationsAsPatient;
+      const lastDates = [
+        p.appointmentsAsPatient[0]?.date,
+        p.consultationsAsPatient[0]?.date,
+      ].filter(Boolean);
+      const lastVisit = lastDates.sort().at(-1) || null;
+      const createdRecently = p.createdAt.getTime() > thirtyDaysAgo;
+      const derivedStatus: 'active' | 'new' | 'inactive' = visits
+        ? 'active'
+        : createdRecently
+          ? 'new'
+          : 'inactive';
+
+      return {
+        ...publicUser(p),
+        visits,
+        lastVisit,
+        status: derivedStatus,
+      };
+    });
+
+    const normalized = status?.toLowerCase();
+    if (
+      normalized &&
+      normalized !== 'all' &&
+      ['active', 'new', 'inactive'].includes(normalized)
+    ) {
+      return rows.filter((r) => r.status === normalized);
+    }
+    return rows;
   }
 
   @Get('patients/:id')

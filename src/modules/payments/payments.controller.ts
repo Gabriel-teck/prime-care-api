@@ -1,10 +1,22 @@
-import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiPropertyOptional,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { IsBoolean, IsOptional } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -13,7 +25,22 @@ import {
   CurrentUser,
   AuthUser,
 } from '../../common/decorators/current-user.decorator';
-import { PaymentStatus } from '../../generated/prisma/client';
+import { PaymentStatus, Prisma } from '../../generated/prisma/client';
+
+class UpdatePaymentDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  chatEntitled?: boolean;
+}
+
+const VALID_STATUSES = new Set(Object.values(PaymentStatus));
+
+function parseStatus(status?: string): PaymentStatus | undefined {
+  if (!status || status === 'all') return undefined;
+  const normalized = status.toUpperCase() as PaymentStatus;
+  return VALID_STATUSES.has(normalized) ? normalized : undefined;
+}
 
 @ApiTags('Payments')
 @ApiBearerAuth('JWT')
@@ -26,12 +53,38 @@ export class PaymentsController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @ApiOperation({ summary: 'List all payments (admin)' })
-  @ApiQuery({ name: 'status', required: false })
-  async list(@Query('status') status?: string) {
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'pending | paid | failed | refunded',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Match patient name, email, or description',
+  })
+  async list(
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    const paymentStatus = parseStatus(status);
+    const q = search?.trim();
+
+    const where: Prisma.PaymentWhereInput = {
+      ...(paymentStatus ? { status: paymentStatus } : {}),
+      ...(q
+        ? {
+            OR: [
+              { description: { contains: q, mode: 'insensitive' } },
+              { user: { fullName: { contains: q, mode: 'insensitive' } } },
+              { user: { email: { contains: q, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
     const rows = await this.prisma.payment.findMany({
-      where: status
-        ? { status: status.toUpperCase() as PaymentStatus }
-        : undefined,
+      where,
       include: { user: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -66,6 +119,36 @@ export class PaymentsController {
       chatEntitled: p.chatEntitled,
       createdAt: p.createdAt,
     }));
+  }
+
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Update payment fields (admin)' })
+  async update(@Param('id') id: string, @Body() dto: UpdatePaymentDto) {
+    const existing = await this.prisma.payment.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Payment not found');
+    const payment = await this.prisma.payment.update({
+      where: { id },
+      data: {
+        ...(dto.chatEntitled === undefined
+          ? {}
+          : { chatEntitled: dto.chatEntitled }),
+      },
+      include: { user: true },
+    });
+    return {
+      id: payment.id,
+      patientName: payment.user.fullName,
+      patientEmail: payment.user.email,
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      method: payment.method,
+      status: payment.status.toLowerCase(),
+      description: payment.description,
+      chatEntitled: payment.chatEntitled,
+      createdAt: payment.createdAt,
+    };
   }
 
   @Post('unlock-chat')

@@ -97,14 +97,62 @@ export class StaffController {
 
   @Get()
   @ApiOperation({ summary: 'List staff (doctors and/or admins)' })
-  @ApiQuery({ name: 'role', required: false, example: 'doctor' })
-  async list(@Query('role') role?: string) {
-    const where =
-      role === 'doctor'
-        ? { role: Role.DOCTOR }
-        : { role: { in: [Role.DOCTOR, Role.ADMIN] } };
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    description: 'doctor | admin | all',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'active | inactive | all',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Match name, email, or specialty',
+  })
+  async list(
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    const normalizedRole = role?.toLowerCase();
+    const roleWhere =
+      normalizedRole === 'doctor'
+        ? Role.DOCTOR
+        : normalizedRole === 'admin'
+          ? Role.ADMIN
+          : { in: [Role.DOCTOR, Role.ADMIN] };
+
+    const normalizedStatus = status?.toLowerCase();
+    const isActive =
+      normalizedStatus === 'active'
+        ? true
+        : normalizedStatus === 'inactive'
+          ? false
+          : undefined;
+
+    const q = search?.trim();
+
     const users = await this.prisma.user.findMany({
-      where,
+      where: {
+        role: roleWhere,
+        ...(isActive === undefined ? {} : { isActive }),
+        ...(q
+          ? {
+              OR: [
+                { fullName: { contains: q, mode: 'insensitive' } },
+                { email: { contains: q, mode: 'insensitive' } },
+                {
+                  doctorProfile: {
+                    specialty: { contains: q, mode: 'insensitive' },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
       include: { doctorProfile: true },
       orderBy: { fullName: 'asc' },
     });
