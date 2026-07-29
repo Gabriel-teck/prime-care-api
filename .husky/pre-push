@@ -1,4 +1,5 @@
 npm run lint
+npm audit
 npm run format:check
 npm run test
 npm run build
