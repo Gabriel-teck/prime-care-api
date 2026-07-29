@@ -56,7 +56,7 @@ describe('UsersController', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('listPatients maps public users', async () => {
+  it('listPatients maps public users with visit stats', async () => {
     prisma.user.findMany.mockResolvedValue([
       {
         id: 'p1',
@@ -66,11 +66,61 @@ describe('UsersController', () => {
         phone: null,
         avatarUrl: null,
         isActive: true,
+        createdAt: new Date(),
+        _count: {
+          appointmentsAsPatient: 1,
+          consultationsAsPatient: 0,
+        },
+        appointmentsAsPatient: [{ date: '2026-08-01' }],
+        consultationsAsPatient: [],
       },
     ]);
     const rows = await controller.listPatients();
     expect(rows).toHaveLength(1);
     expect(rows[0].role).toBe('patient');
+    expect(rows[0].visits).toBe(1);
+    expect(rows[0].status).toBe('active');
+    expect(rows[0].lastVisit).toBe('2026-08-01');
+  });
+
+  it('listPatients filters by status', async () => {
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'p1',
+        email: 'p@x.com',
+        fullName: 'Active',
+        role: Role.PATIENT,
+        phone: null,
+        avatarUrl: null,
+        isActive: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60),
+        _count: {
+          appointmentsAsPatient: 2,
+          consultationsAsPatient: 0,
+        },
+        appointmentsAsPatient: [{ date: '2026-07-01' }],
+        consultationsAsPatient: [],
+      },
+      {
+        id: 'p2',
+        email: 'n@x.com',
+        fullName: 'New',
+        role: Role.PATIENT,
+        phone: null,
+        avatarUrl: null,
+        isActive: true,
+        createdAt: new Date(),
+        _count: {
+          appointmentsAsPatient: 0,
+          consultationsAsPatient: 0,
+        },
+        appointmentsAsPatient: [],
+        consultationsAsPatient: [],
+      },
+    ]);
+    const rows = await controller.listPatients(undefined, 'new');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].fullName).toBe('New');
   });
 
   it('getPatient throws when not found', async () => {
