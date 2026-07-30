@@ -12,19 +12,23 @@ export class ChatService {
   constructor(private prisma: PrismaService) {}
 
   async listConversations(auth: AuthUser) {
-    const rows = await this.prisma.conversation.findMany({
-      where: {
-        participants: { some: { userId: auth.userId } },
-      },
-      include: {
-        participants: { include: { user: true } },
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
+    const [rows, unreadMap] = await Promise.all([
+      this.prisma.conversation.findMany({
+        where: {
+          participants: { some: { userId: auth.userId } },
         },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
+        include: {
+          participants: { include: { user: true } },
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: { sender: true },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.unreadByConversation(auth.userId),
+    ]);
 
     return rows.map((c) => {
       const others = c.participants.filter((p) => p.userId !== auth.userId);
@@ -48,9 +52,16 @@ export class ChatService {
         messages: c.messages.map((m) => ({
           id: m.id,
           content: m.content,
-          sender: m.senderId === auth.userId ? 'patient' : 'admin',
+          sender:
+            m.sender.role === Role.PATIENT
+              ? 'patient'
+              : m.sender.role === Role.DOCTOR
+                ? 'doctor'
+                : 'admin',
+          senderId: m.senderId,
           createdAt: m.createdAt,
         })),
+        unreadCount: unreadMap[c.id] || 0,
         updatedAt: c.updatedAt,
       };
     });
@@ -105,8 +116,14 @@ export class ChatService {
       (auth.role === 'doctor' && body.adminId)
     ) {
       type = ConversationType.DOCTOR_ADMIN;
-      if (body.adminId) participantIds.add(body.adminId);
-      else {
+      if (auth.role === 'admin') {
+        if (!body.doctorId) {
+          throw new NotFoundException('doctorId required');
+        }
+        participantIds.add(body.doctorId);
+      } else if (body.adminId) {
+        participantIds.add(body.adminId);
+      } else {
         const admin = await this.prisma.user.findFirst({
           where: { role: Role.ADMIN, isActive: true },
         });
@@ -120,16 +137,29 @@ export class ChatService {
       type = ConversationType.DOCTOR_PATIENT;
       if (!body.patientId) throw new NotFoundException('patientId required');
       participantIds.add(body.patientId);
-    } else {
+    } else if (
+      body.type === 'PATIENT_CARE' ||
+      auth.role === 'patient' ||
+      body.adminId ||
+      body.doctorId ||
+      body.patientId
+    ) {
       type = ConversationType.PATIENT_CARE;
-      const peerId = body.adminId || body.doctorId;
-      if (peerId) participantIds.add(peerId);
-      else {
-        const admin = await this.prisma.user.findFirst({
-          where: { role: Role.ADMIN, isActive: true },
-        });
-        if (!admin) throw new NotFoundException('No care staff available');
-        participantIds.add(admin.id);
+      if (auth.role === 'admin' || auth.role === 'doctor') {
+        if (!body.patientId) {
+          throw new NotFoundException('patientId required');
+        }
+        participantIds.add(body.patientId);
+      } else {
+        const peerId = body.adminId || body.doctorId;
+        if (peerId) participantIds.add(peerId);
+        else {
+          const admin = await this.prisma.user.findFirst({
+            where: { role: Role.ADMIN, isActive: true },
+          });
+          if (!admin) throw new NotFoundException('No care staff available');
+          participantIds.add(admin.id);
+        }
       }
     }
 
@@ -201,5 +231,43 @@ export class ChatService {
         },
       },
     });
+  }
+
+  async unreadByConversation(userId: string) {
+    const rows = await this.prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        readAt: null,
+        senderId: { not: userId },
+        conversation: {
+          participants: { some: { userId } },
+        },
+      },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(
+      rows.map((r) => [r.conversationId, r._count._all]),
+    ) as Record<string, number>;
+  }
+
+  async markRead(userId: string, conversationId: string) {
+    await this.ensureParticipant(conversationId, userId);
+    await this.prisma.message.updateMany({
+      where: {
+        conversationId,
+        senderId: { not: userId },
+        readAt: null,
+      },
+      data: { readAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  async peerIds(conversationId: string, userId: string) {
+    const parts = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId, userId: { not: userId } },
+      select: { userId: true },
+    });
+    return parts.map((p) => p.userId);
   }
 }

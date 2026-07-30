@@ -2,6 +2,7 @@ import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -21,14 +22,43 @@ type AuthedSocket = Omit<Socket, 'data'> & {
   namespace: '/chat',
   cors: { origin: true, credentials: true },
 })
-export class ChatGateway implements OnGatewayConnection {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+
+  /** userId -> set of socket ids */
+  private online = new Map<string, Set<string>>();
 
   constructor(
     private jwt: JwtService,
     private chat: ChatService,
   ) {}
+
+  private setOnline(userId: string, socketId: string) {
+    const sockets = this.online.get(userId) || new Set<string>();
+    const wasOffline = sockets.size === 0;
+    sockets.add(socketId);
+    this.online.set(userId, sockets);
+    if (wasOffline) {
+      this.server.emit('presenceUpdate', { userId, online: true });
+    }
+  }
+
+  private setOffline(userId: string, socketId: string) {
+    const sockets = this.online.get(userId);
+    if (!sockets) return;
+    sockets.delete(socketId);
+    if (sockets.size === 0) {
+      this.online.delete(userId);
+      this.server.emit('presenceUpdate', { userId, online: false });
+    } else {
+      this.online.set(userId, sockets);
+    }
+  }
+
+  isOnline(userId: string) {
+    return (this.online.get(userId)?.size || 0) > 0;
+  }
 
   async handleConnection(client: AuthedSocket) {
     try {
@@ -46,9 +76,24 @@ export class ChatGateway implements OnGatewayConnection {
         role: payload.role,
       };
       await client.join(`user_${payload.sub}`);
+      this.setOnline(payload.sub, client.id);
     } catch {
       client.disconnect();
     }
+  }
+
+  handleDisconnect(client: AuthedSocket) {
+    const userId = client.data.user?.userId;
+    if (userId) this.setOffline(userId, client.id);
+  }
+
+  @SubscribeMessage('getPresence')
+  getPresence(@MessageBody() body: { userIds?: string[] }) {
+    const ids = body?.userIds || [];
+    return ids.map((userId) => ({
+      userId,
+      online: this.isOnline(userId),
+    }));
   }
 
   @SubscribeMessage('joinConversation')
@@ -60,6 +105,15 @@ export class ChatGateway implements OnGatewayConnection {
     if (!user) return;
     await this.chat.ensureParticipant(body.conversationId, user.userId);
     await client.join(`conversation_${body.conversationId}`);
+    await this.chat.markRead(user.userId, body.conversationId);
+    const peerIds = await this.chat.peerIds(body.conversationId, user.userId);
+    return {
+      ok: true,
+      peers: peerIds.map((userId) => ({
+        userId,
+        online: this.isOnline(userId),
+      })),
+    };
   }
 
   @SubscribeMessage('sendMessage')
@@ -77,6 +131,14 @@ export class ChatGateway implements OnGatewayConnection {
     this.server
       .to(`conversation_${body.conversationId}`)
       .emit('receiveMessage', message);
+
+    const peerIds = await this.chat.peerIds(body.conversationId, user.userId);
+    for (const peerId of peerIds) {
+      this.server.to(`user_${peerId}`).emit('inboxUpdate', {
+        conversationId: body.conversationId,
+        message,
+      });
+    }
     return message;
   }
 
@@ -87,6 +149,7 @@ export class ChatGateway implements OnGatewayConnection {
   ) {
     client.to(`conversation_${body.conversationId}`).emit('userTyping', {
       userId: client.data.user?.userId,
+      conversationId: body.conversationId,
       isTyping: body.isTyping,
     });
   }

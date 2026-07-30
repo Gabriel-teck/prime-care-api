@@ -60,7 +60,7 @@ export class ChatController {
   @ApiOperation({
     summary: 'List conversations for the current user',
     description:
-      'Also available over Socket.IO namespace `/chat` (joinConversation, sendMessage, typing).',
+      'Also available over Socket.IO namespace `/chat` (joinConversation, sendMessage, typing, getPresence).',
   })
   list(@CurrentUser() user: AuthUser) {
     return this.chat.listConversations(user);
@@ -70,6 +70,12 @@ export class ChatController {
   @ApiOperation({ summary: 'Get messages in a conversation' })
   messages(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.chat.getMessages(user, id);
+  }
+
+  @Post('conversations/:id/read')
+  @ApiOperation({ summary: 'Mark conversation messages as read' })
+  markRead(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.chat.markRead(user.userId, id);
   }
 
   @Get('unread')
