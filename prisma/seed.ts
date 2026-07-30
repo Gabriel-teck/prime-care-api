@@ -78,16 +78,6 @@ async function main() {
     skipDuplicates: true,
   });
 
-  await prisma.contentBlock.upsert({
-    where: { key: 'hero_headline' },
-    update: {},
-    create: {
-      key: 'hero_headline',
-      title: 'Hero headline',
-      body: 'Online Doctors A Few Clicks Away!',
-    },
-  });
-
   console.log('Seeded users:', {
     admin: admin.email,
     doctor: doctor.email,

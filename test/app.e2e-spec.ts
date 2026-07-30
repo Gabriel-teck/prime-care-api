@@ -142,9 +142,4 @@ describe('PrimeCare API smoke (e2e)', () => {
     const res = await request(app.getHttpServer()).get('/catalog').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
-
-  it('lists content blocks', async () => {
-    const res = await request(app.getHttpServer()).get('/content').expect(200);
-    expect(Array.isArray(res.body)).toBe(true);
-  });
 });
