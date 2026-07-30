@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -34,7 +36,10 @@ class CreateCatalogDto {
   @MinLength(1)
   name!: string;
 
-  @ApiProperty({ example: 'specialty' })
+  @ApiProperty({
+    example: 'specialty',
+    enum: ['specialty', 'urgent_care', 'service'],
+  })
   @IsString()
   type!: string;
 
@@ -45,7 +50,12 @@ class CreateCatalogDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
-  price?: number;
+  price?: number | null;
+
+  @ApiPropertyOptional({ example: 'NGN' })
+  @IsOptional()
+  @IsString()
+  currency?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -58,17 +68,44 @@ class CreateCatalogDto {
 export class CatalogController {
   constructor(private prisma: PrismaService) {}
 
+  private parseType(raw: string): CatalogType {
+    const normalized = raw
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
+    if (
+      normalized !== CatalogType.SPECIALTY &&
+      normalized !== CatalogType.URGENT_CARE &&
+      normalized !== CatalogType.SERVICE
+    ) {
+      throw new BadRequestException(`Invalid catalog type: ${raw}`);
+    }
+    return normalized as CatalogType;
+  }
+
+  private serialize<T extends { type: CatalogType; price: unknown }>(row: T) {
+    return {
+      ...row,
+      type: row.type.toLowerCase(),
+      price: row.price != null ? Number(row.price) : null,
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'List catalog items (public)' })
   async list() {
     const rows = await this.prisma.catalogItem.findMany({
       orderBy: { name: 'asc' },
     });
-    return rows.map((r) => ({
-      ...r,
-      type: r.type.toLowerCase(),
-      price: r.price != null ? Number(r.price) : null,
-    }));
+    return rows.map((r) => this.serialize(r));
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a catalog item by id (public)' })
+  async getOne(@Param('id') id: string) {
+    const row = await this.prisma.catalogItem.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException('Catalog item not found');
+    return this.serialize(row);
   }
 
   @Post()
@@ -76,16 +113,19 @@ export class CatalogController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiOperation({ summary: 'Create a catalog item (admin)' })
-  create(@Body() dto: CreateCatalogDto) {
-    return this.prisma.catalogItem.create({
+  async create(@Body() dto: CreateCatalogDto) {
+    const type = this.parseType(dto.type);
+    const row = await this.prisma.catalogItem.create({
       data: {
         name: dto.name,
-        type: dto.type.toUpperCase() as CatalogType,
+        type,
         description: dto.description,
-        price: dto.price,
+        price: type === CatalogType.SERVICE ? (dto.price ?? null) : null,
+        currency: dto.currency || 'NGN',
         published: dto.published ?? false,
       },
     });
+    return this.serialize(row);
   }
 
   @Patch(':id')
@@ -101,15 +141,42 @@ export class CatalogController {
       where: { id },
     });
     if (!existing) throw new NotFoundException('Catalog item not found');
-    return this.prisma.catalogItem.update({
+
+    const nextType = dto.type ? this.parseType(dto.type) : existing.type;
+    const isService = nextType === CatalogType.SERVICE;
+
+    let price: number | null | undefined = dto.price;
+    if (dto.type && !isService) {
+      price = null;
+    } else if (isService && dto.price === undefined && existing.price == null) {
+      price = undefined;
+    }
+
+    const row = await this.prisma.catalogItem.update({
       where: { id },
       data: {
         name: dto.name,
         description: dto.description,
-        price: dto.price,
         published: dto.published,
-        type: dto.type ? (dto.type.toUpperCase() as CatalogType) : undefined,
+        currency: dto.currency,
+        type: dto.type ? nextType : undefined,
+        price,
       },
     });
+    return this.serialize(row);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth('JWT')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: 'Delete a catalog item (admin)' })
+  async remove(@Param('id') id: string) {
+    const existing = await this.prisma.catalogItem.findUnique({
+      where: { id },
+    });
+    if (!existing) throw new NotFoundException('Catalog item not found');
+    await this.prisma.catalogItem.delete({ where: { id } });
+    return { ok: true };
   }
 }

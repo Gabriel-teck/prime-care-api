@@ -10,7 +10,6 @@ import { ChatModule } from './modules/chat/chat.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
-import { ContentModule } from './modules/content/content.module';
 import { RecordsModule } from './modules/records/records.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { validateEnv } from './config/env.validation';
@@ -32,7 +31,6 @@ import { validateEnv } from './config/env.validation';
     StaffModule,
     PaymentsModule,
     CatalogModule,
-    ContentModule,
     RecordsModule,
   ],
 })
