@@ -91,7 +91,7 @@
     "typescript-eslint": "^8.20.0"
   },
   "overrides": {
-    "brace-expansion": "5.0.8",
+    "brace-expansion": "5.0.9",
     "tar": "7.5.22",
     "file-type": "22.0.1",
     "@nestjs/swagger": {
