@@ -52,4 +52,50 @@ describe('NotificationsService', () => {
     expect(createTransport).toHaveBeenCalled();
     expect(sendMail).toHaveBeenCalled();
   });
+
+  it('throws when contact email gmail unset', async () => {
+    const config = {
+      get: jest.fn().mockReturnValue(undefined),
+    } as unknown as ConfigService;
+    const service = new NotificationsService(config);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+    await expect(
+      service.sendContactEmail({
+        name: 'Jane',
+        email: 'jane@example.com',
+        message: 'Hello there',
+      }),
+    ).rejects.toThrow('Email service is not configured');
+
+    expect(createTransport).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('sends contact email to configured inbox', async () => {
+    const sendMail = jest.fn().mockResolvedValue({ messageId: '1' });
+    createTransport.mockReturnValue({ sendMail });
+    const config = {
+      get: jest.fn((key: string) => {
+        if (key === 'GMAIL_USER' || key === 'GMAIL_PASS') return 'x';
+        if (key === 'CONTACT_TO_EMAIL') return 'gabbyjunior4000@gmail.com';
+        return undefined;
+      }),
+    } as unknown as ConfigService;
+    const service = new NotificationsService(config);
+
+    await service.sendContactEmail({
+      name: 'Jane',
+      email: 'jane@example.com',
+      message: 'Hello there',
+    });
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'gabbyjunior4000@gmail.com',
+        replyTo: 'jane@example.com',
+        subject: 'PrimeCare contact: Jane',
+      }),
+    );
+  });
 });

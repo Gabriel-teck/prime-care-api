@@ -12,6 +12,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { RecordsModule } from './modules/records/records.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ContactModule } from './modules/contact/contact.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -32,6 +33,7 @@ import { validateEnv } from './config/env.validation';
     PaymentsModule,
     CatalogModule,
     RecordsModule,
+    ContactModule,
   ],
 })
 export class AppModule {}

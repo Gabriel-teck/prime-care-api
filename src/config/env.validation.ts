@@ -38,6 +38,10 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   GMAIL_PASS?: string;
+
+  @IsOptional()
+  @IsString()
+  CONTACT_TO_EMAIL?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
@@ -48,6 +52,7 @@ export function validateEnv(config: Record<string, unknown>) {
     GOOGLE_CLIENT_IDS: config.GOOGLE_CLIENT_IDS || undefined,
     GMAIL_USER: config.GMAIL_USER || undefined,
     GMAIL_PASS: config.GMAIL_PASS || undefined,
+    CONTACT_TO_EMAIL: config.CONTACT_TO_EMAIL || undefined,
   };
   const validated = plainToInstance(EnvironmentVariables, normalized, {
     enableImplicitConversion: true,

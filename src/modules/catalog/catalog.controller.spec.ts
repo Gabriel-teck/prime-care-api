@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CatalogController } from './catalog.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CatalogType } from '../../generated/prisma/client';
@@ -15,6 +15,12 @@ describe('CatalogController', () => {
     },
   };
 
+  const specialtyFile = {
+    filename: 'specialty.png',
+    mimetype: 'image/png',
+    originalname: 'specialty.png',
+  } as Express.Multer.File;
+
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new CatalogController(prisma as unknown as PrismaService);
@@ -28,12 +34,14 @@ describe('CatalogController', () => {
         type: CatalogType.SPECIALTY,
         price: 8000,
         description: 'x',
+        imageUrl: '/uploads/derm.png',
         published: true,
       },
     ]);
     const rows = await controller.list();
     expect(rows[0].type).toBe('specialty');
     expect(rows[0].price).toBe(8000);
+    expect(rows[0].imageUrl).toBe('/uploads/derm.png');
   });
 
   it('getOne throws when missing', async () => {
@@ -43,7 +51,19 @@ describe('CatalogController', () => {
     );
   });
 
-  it('create persists item', async () => {
+  it('create rejects specialty without image', async () => {
+    await expect(
+      controller.create({
+        name: 'Derm',
+        type: 'specialty',
+        description: 'x',
+        published: true,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.catalogItem.create).not.toHaveBeenCalled();
+  });
+
+  it('create persists specialty with image', async () => {
     prisma.catalogItem.create.mockResolvedValue({
       id: '1',
       name: 'Derm',
@@ -51,19 +71,24 @@ describe('CatalogController', () => {
       price: null,
       currency: 'NGN',
       description: 'x',
+      imageUrl: '/uploads/specialty.png',
       published: true,
     });
-    await controller.create({
-      name: 'Derm',
-      type: 'specialty',
-      description: 'x',
-      price: 100,
-      published: true,
-    });
+    await controller.create(
+      {
+        name: 'Derm',
+        type: 'specialty',
+        description: 'x',
+        price: 100,
+        published: true,
+      },
+      specialtyFile,
+    );
     expect(prisma.catalogItem.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         type: CatalogType.SPECIALTY,
         price: null,
+        imageUrl: '/uploads/specialty.png',
       }),
     });
   });
@@ -76,6 +101,7 @@ describe('CatalogController', () => {
       price: 5000,
       currency: 'NGN',
       description: 'x',
+      imageUrl: null,
       published: false,
     });
     await controller.create({
@@ -89,6 +115,7 @@ describe('CatalogController', () => {
       data: expect.objectContaining({
         type: CatalogType.SERVICE,
         price: 5000,
+        imageUrl: null,
       }),
     });
   });
@@ -98,6 +125,19 @@ describe('CatalogController', () => {
     await expect(
       controller.update('missing', { name: 'x' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('update rejects specialty without image', async () => {
+    prisma.catalogItem.findUnique.mockResolvedValue({
+      id: '1',
+      type: CatalogType.URGENT_CARE,
+      imageUrl: null,
+      price: null,
+    });
+    await expect(
+      controller.update('1', { type: 'specialty' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.catalogItem.update).not.toHaveBeenCalled();
   });
 
   it('remove deletes item', async () => {
