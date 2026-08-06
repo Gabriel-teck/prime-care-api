@@ -14,6 +14,7 @@ import { RecordsModule } from './modules/records/records.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { CallsModule } from './modules/calls/calls.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -36,6 +37,7 @@ import { validateEnv } from './config/env.validation';
     CatalogModule,
     RecordsModule,
     ContactModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

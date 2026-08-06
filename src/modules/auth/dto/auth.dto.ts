@@ -51,3 +51,15 @@ export class ResetPasswordDto {
   @MinLength(6)
   password!: string;
 }
+
+export class ChangePasswordDto {
+  @ApiProperty({ example: 'Password123!' })
+  @IsString()
+  @MinLength(1)
+  currentPassword!: string;
+
+  @ApiProperty({ minLength: 6, example: 'NewPassword123!' })
+  @IsString()
+  @MinLength(6)
+  newPassword!: string;
+}

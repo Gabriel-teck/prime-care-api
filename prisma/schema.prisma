@@ -256,3 +256,14 @@ model MedicalFile {
   @@index([ownerId])
   @@map("medical_files")
 }
+
+model PlatformSettings {
+  id           String   @id @default("default")
+  brandName    String   @default("PrimeCare")
+  supportEmail String   @default("support@primecare.health")
+  timezone     String   @default("Africa/Lagos")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("platform_settings")
+}
