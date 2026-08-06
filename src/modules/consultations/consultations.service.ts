@@ -22,6 +22,14 @@ function toStatus(status?: string): BookingStatus | undefined {
   return status.toUpperCase() as BookingStatus;
 }
 
+const VALID_STATUSES = new Set(Object.values(BookingStatus));
+
+function parseStatusFilter(status?: string): BookingStatus | undefined {
+  if (!status || status === 'all') return undefined;
+  const normalized = status.toUpperCase() as BookingStatus;
+  return VALID_STATUSES.has(normalized) ? normalized : undefined;
+}
+
 function serialize(row: {
   id: string;
   patientId: string;
@@ -116,24 +124,34 @@ export class ConsultationsService {
     }));
   }
 
-  async my(auth: AuthUser) {
+  async my(auth: AuthUser, status?: string) {
+    const statusFilter = parseStatusFilter(status);
     const rows = await this.prisma.consultation.findMany({
-      where: { patientId: auth.userId },
+      where: {
+        patientId: auth.userId,
+        ...(statusFilter ? { status: statusFilter } : {}),
+      },
       orderBy: [{ date: 'desc' }, { time: 'desc' }],
     });
     return rows.map(serialize);
   }
 
-  async doctorMine(auth: AuthUser) {
+  async doctorMine(auth: AuthUser, status?: string) {
+    const statusFilter = parseStatusFilter(status);
     const rows = await this.prisma.consultation.findMany({
-      where: { doctorId: auth.userId },
+      where: {
+        doctorId: auth.userId,
+        ...(statusFilter ? { status: statusFilter } : {}),
+      },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
     });
     return rows.map(serialize);
   }
 
-  async all() {
+  async all(status?: string) {
+    const statusFilter = parseStatusFilter(status);
     const rows = await this.prisma.consultation.findMany({
+      where: statusFilter ? { status: statusFilter } : undefined,
       orderBy: [{ date: 'desc' }, { time: 'desc' }],
     });
     return rows.map(serialize);

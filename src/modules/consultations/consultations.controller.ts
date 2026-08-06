@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -14,6 +15,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -86,24 +88,42 @@ export class ConsultationsController {
 
   @Get('my')
   @ApiOperation({ summary: 'List my consultations' })
-  my(@CurrentUser() user: AuthUser) {
-    return this.consultations.my(user);
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description:
+      'pending | confirmed | completed | cancelled | rescheduled | all',
+  })
+  my(@CurrentUser() user: AuthUser, @Query('status') status?: string) {
+    return this.consultations.my(user, status);
   }
 
   @Get('doctor/my')
   @UseGuards(RolesGuard)
   @Roles('doctor')
   @ApiOperation({ summary: 'List consultations assigned to the doctor' })
-  doctorMine(@CurrentUser() user: AuthUser) {
-    return this.consultations.doctorMine(user);
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description:
+      'pending | confirmed | completed | cancelled | rescheduled | all',
+  })
+  doctorMine(@CurrentUser() user: AuthUser, @Query('status') status?: string) {
+    return this.consultations.doctorMine(user, status);
   }
 
   @Get()
   @UseGuards(RolesGuard)
   @Roles('admin')
   @ApiOperation({ summary: 'List all consultations (admin)' })
-  all() {
-    return this.consultations.all();
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description:
+      'pending | confirmed | completed | cancelled | rescheduled | all',
+  })
+  all(@Query('status') status?: string) {
+    return this.consultations.all(status);
   }
 
   @Patch('cancel/:id')
