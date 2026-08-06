@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   BookingStatus,
   MedicalFileSource,
+  Role,
 } from '../../generated/prisma/client';
 import {
   CreateConsultationDto,
@@ -54,9 +56,22 @@ export class ConsultationsService {
     const fileUrl = file ? `/uploads/${file.filename}` : null;
     const fileName = file?.originalname || null;
 
+    let doctorId: string | undefined;
+    if (dto.doctorId) {
+      const doctor = await this.prisma.user.findFirst({
+        where: { id: dto.doctorId, role: Role.DOCTOR, isActive: true },
+        select: { id: true },
+      });
+      if (!doctor) {
+        throw new BadRequestException('Selected doctor is not available');
+      }
+      doctorId = doctor.id;
+    }
+
     const consultation = await this.prisma.consultation.create({
       data: {
         patientId: auth.userId,
+        doctorId,
         fullName: dto.fullName,
         email: dto.email,
         phoneNumber: dto.phoneNumber,
@@ -82,6 +97,23 @@ export class ConsultationsService {
     }
 
     return serialize(consultation);
+  }
+
+  async doctors() {
+    const rows = await this.prisma.user.findMany({
+      where: { role: Role.DOCTOR, isActive: true },
+      select: {
+        id: true,
+        fullName: true,
+        doctorProfile: { select: { specialty: true } },
+      },
+      orderBy: { fullName: 'asc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      fullName: row.fullName,
+      specialty: row.doctorProfile?.specialty ?? null,
+    }));
   }
 
   async my(auth: AuthUser) {

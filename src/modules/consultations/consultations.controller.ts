@@ -53,6 +53,7 @@ export class ConsultationsController {
         date: { type: 'string' },
         time: { type: 'string' },
         reason: { type: 'string' },
+        doctorId: { type: 'string', format: 'uuid' },
         file: { type: 'string', format: 'binary' },
       },
     },
@@ -75,6 +76,12 @@ export class ConsultationsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.consultations.create(user, dto, file);
+  }
+
+  @Get('doctors')
+  @ApiOperation({ summary: 'List doctors available for consultation booking' })
+  doctors() {
+    return this.consultations.doctors();
   }
 
   @Get('my')

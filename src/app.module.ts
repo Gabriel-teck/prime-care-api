@@ -13,6 +13,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { RecordsModule } from './modules/records/records.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { CallsModule } from './modules/calls/calls.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -29,6 +30,7 @@ import { validateEnv } from './config/env.validation';
     ConsultationsModule,
     BookingsModule,
     ChatModule,
+    CallsModule,
     StaffModule,
     PaymentsModule,
     CatalogModule,

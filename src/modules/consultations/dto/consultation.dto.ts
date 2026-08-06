@@ -30,6 +30,14 @@ export class CreateConsultationDto {
   @IsString()
   @MinLength(5)
   reason!: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Preferred doctor to assign on booking',
+  })
+  @IsOptional()
+  @IsString()
+  doctorId?: string;
 }
 
 export class UpdateConsultationDto {
