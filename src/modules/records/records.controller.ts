@@ -104,7 +104,7 @@ export class RecordsController {
     });
   }
 
-  @Get('notes/patient/:patientId')
+  @Get('records/notes/patient/:patientId')
   @UseGuards(RolesGuard)
   @Roles('doctor', 'admin')
   @ApiOperation({ summary: 'List doctor notes for a patient' })
@@ -116,7 +116,7 @@ export class RecordsController {
     });
   }
 
-  @Post('notes')
+  @Post('records/notes')
   @UseGuards(RolesGuard)
   @Roles('doctor')
   @ApiOperation({ summary: 'Create a doctor note for a patient' })

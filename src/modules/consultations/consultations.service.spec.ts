@@ -92,6 +92,27 @@ describe('ConsultationsService', () => {
       role: 'patient',
     });
     expect(rows).toHaveLength(1);
+    expect(prisma.consultation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { patientId: 'p1' },
+      }),
+    );
+  });
+
+  it('my filters by status', async () => {
+    prisma.consultation.findMany.mockResolvedValue([baseRow]);
+    await service.my(
+      { userId: 'p1', email: 'p@x.com', role: 'patient' },
+      'confirmed',
+    );
+    expect(prisma.consultation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          patientId: 'p1',
+          status: BookingStatus.CONFIRMED,
+        },
+      }),
+    );
   });
 
   it('cancel forbids other patients', async () => {
