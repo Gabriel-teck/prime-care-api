@@ -78,6 +78,17 @@ async function main() {
     skipDuplicates: true,
   });
 
+  await prisma.platformSettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      brandName: 'PrimeCare',
+      supportEmail: 'support@primecare.health',
+      timezone: 'Africa/Lagos',
+    },
+  });
+
   console.log('Seeded users:', {
     admin: admin.email,
     doctor: doctor.email,

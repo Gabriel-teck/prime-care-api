@@ -1,7 +1,13 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthService } from './auth.service';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  AuthUser,
+  CurrentUser,
+} from '../../common/decorators/current-user.decorator';
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import {
+  ChangePasswordDto,
   ForgotPasswordDto,
   GoogleAuthDto,
   LoginDto,
@@ -42,5 +48,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password with token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password for the authenticated user' })
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(user.userId, dto);
   }
 }

@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
+  Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +24,7 @@ import {
 } from '../../common/decorators/current-user.decorator';
 import { publicUser } from '../../common/utils/public-user';
 import { Role } from '../../generated/prisma/client';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -50,6 +53,37 @@ export class UsersController {
       include: { doctorProfile: true },
     });
     if (!user) throw new NotFoundException('User not found');
+    return {
+      ...publicUser(user),
+      doctorProfile: user.doctorProfile,
+    };
+  }
+
+  @Patch('me')
+  @ApiBearerAuth('JWT')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update the authenticated user profile' })
+  async updateMe(@CurrentUser() auth: AuthUser, @Body() dto: UpdateProfileDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { id: auth.userId },
+    });
+    if (!existing) throw new NotFoundException('User not found');
+
+    const data: { fullName?: string; phone?: string | null } = {};
+    if (dto.fullName !== undefined) {
+      data.fullName = dto.fullName.trim();
+    }
+    if (dto.phone !== undefined) {
+      const trimmed = dto.phone.trim();
+      data.phone = trimmed || null;
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: auth.userId },
+      data,
+      include: { doctorProfile: true },
+    });
+
     return {
       ...publicUser(user),
       doctorProfile: user.doctorProfile,
